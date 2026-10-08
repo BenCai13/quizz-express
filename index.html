@@ -52,6 +52,11 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .chip{border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:600 15px var(--f-body);min-height:48px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left}
 .chip i{width:14px;height:14px;border-radius:4px;background:var(--cc);flex:none}
 .chip[aria-pressed="true"]{border-color:var(--cc);background:color-mix(in srgb,var(--cc) 22%,var(--bg))}
+.av{width:48px;height:48px;border-radius:50%;border:3px solid var(--gold);background:var(--bg);font-size:24px;cursor:pointer;flex:none;display:grid;place-items:center;padding:0}
+.prow{display:flex;gap:10px;align-items:center}
+.em{font-size:1.15em;margin-right:6px}
+.pill .lab{opacity:.85}
+.pill .val{font-variant-numeric:tabular-nums;margin-left:8px}
 .note{font-size:13px;color:var(--muted);margin:0}
 .note.warn{color:var(--gold)}
 .err{color:var(--bad);font-weight:800;margin:0}
@@ -137,7 +142,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 <div id="shell">
   <div class="top">
     <span class="brand">QUIZZ EXPRESS<small>À DISTANCE</small></span>
-    <button class="icon-btn" id="homebtn" data-act="home" aria-label="Accueil" hidden>Accueil</button>
+    <div class="row"><button class="icon-btn" id="mutebtn" data-act="mute" aria-label="Son">🔊</button><button class="icon-btn" id="homebtn" data-act="home" aria-label="Accueil" hidden>Accueil</button></div>
   </div>
   <main id="app" aria-live="polite"></main>
 </div>
@@ -152,6 +157,32 @@ const CATS = [
   { id: 'Sciences et Nature', color: '#2ee59d' }, { id: 'Sports et Loisirs', color: '#ff8a2b' }
 ];
 const ALL = 'Toutes catégories';
+const AVATARS = ['🦊', '🐼', '🦁', '🐙', '🐸', '🦄', '🐯', '🐧'];
+function lastAvatar() { try { const a = localStorage.getItem('qx_avatar'); if (AVATARS.includes(a)) return a; } catch (e) { } return AVATARS[0]; }
+function saveAvatar(a) { try { localStorage.setItem('qx_avatar', a); } catch (e) { } }
+function nextAvatar(a) { return AVATARS[(AVATARS.indexOf(a) + 1) % AVATARS.length]; }
+/* ---------- Son ---------- */
+let muted = false, audioCtx = null;
+try { muted = localStorage.getItem('qx_muted') === '1'; } catch (e) { }
+function ac() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tone(f, d, type, v, at) {
+  if (muted) return; const c = ac(); if (!c) return;
+  const o = c.createOscillator(), g = c.createGain(); o.type = type || 'sine'; o.frequency.value = f;
+  const t = c.currentTime + (at || 0);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v || .15, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + d + .05);
+}
+const sfx = {
+  tick: () => tone(900, .07, 'square', .07),
+  good: () => { tone(660, .12, 'triangle', .2); tone(990, .28, 'triangle', .2, .12); },
+  bad: () => tone(170, .4, 'sawtooth', .16),
+  win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, .25, 'triangle', .18, i * .14))
+};
+function paintMute() { const b = document.getElementById('mutebtn'); if (b) { b.textContent = muted ? '🔇' : '🔊'; b.setAttribute('aria-label', muted ? 'Son coupé' : 'Son activé'); } }
 const catColor = id => (CATS.find(c => c.id === id) || { color: '#ffc93c' }).color;
 const TOTAL = 10;
 const ERR = {
@@ -172,6 +203,7 @@ const ERR = {
   bad_choice: "Réponse invalide.",
   no_such_player: "Joueur introuvable.",
   cannot_remove_creator: "Le créateur ne peut pas être retiré.",
+  bad_avatar: "Avatar inconnu.",
   server: "Le serveur ne répond pas comme prévu. Réessaie dans un instant."
 };
 const errText = e => ERR[e] || ERR.server;
@@ -223,6 +255,7 @@ function go(screen, extra) { stopTimers(); S = Object.assign({ screen, code: S.c
 
 /* ---------- Ecrans ---------- */
 function render() {
+  paintMute();
   document.getElementById('homebtn').hidden = S.screen === 'home' || S.screen === 'question';
   ({ home: rHome, create: rCreate, join: rJoin, hub: rHub, loading: rLoading, question: rQuestion, feedback: rFeedback, results: rResults, netfail: rNetFail })[S.screen]();
   rOverlay();
@@ -235,7 +268,7 @@ function rNetFail() {
 }
 function rHome() {
   const list = mem.map(s => `<button class="scard" style="--cc:${catColor(s.cat)}" data-act="open" data-code="${esc(s.code)}">
-    <div class="m"><b>${esc(s.code)}</b><span>${esc(s.cat || ALL)} · ${esc(s.nick || 'Gestion seule')}${s.mk ? ' · créateur' : ''}</span></div>
+    <div class="m"><b>${esc(s.code)}</b><span>${esc(s.cat || ALL)} · ${s.av ? s.av + ' ' : ''}${esc(s.nick || 'Gestion seule')}${s.mk ? ' · créateur' : ''}</span></div>
     <span class="pill" id="st-${esc(s.code)}">…</span></button>`).join('');
   $app.innerHTML = `<section class="screen">
     <h1 class="title">Quizz <em>Express</em> à distance</h1>
@@ -266,9 +299,10 @@ function rCreate() {
   const chips = CATS.map(c => `<button class="chip" style="--cc:${c.color}" data-act="cat" data-v="${esc(c.id)}" aria-pressed="${S.cat === c.id}"><i></i>${esc(c.id)}</button>`).join('')
     + `<button class="chip all" style="--cc:#ffc93c" data-act="cat" data-v="${ALL}" aria-pressed="${S.cat === ALL}"><i></i>${ALL}</button>`;
   $app.innerHTML = `<section class="screen"><h1 class="title">Nouvelle <em>session</em></h1>
-    <div class="panel"><div class="lbl">Ton pseudo</div>
-      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words">
-      <p class="note">Il ne pourra plus être changé dans cette session.</p></div>
+    <div class="panel"><div class="lbl">Ton pseudo et ton avatar</div>
+      <div class="prow"><button class="av" data-act="avatar" aria-label="Changer d'avatar">${S.avatar}</button>
+      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words"></div>
+      <p class="note">Touche l'avatar pour en changer. Le pseudo et l'avatar ne pourront plus être changés dans cette session.</p></div>
     <div class="panel"><div class="lbl">Catégorie</div><div class="chips">${chips}</div></div>
     ${S.msg ? `<p class="err">${esc(S.msg)}</p>` : ''}
     <div class="spacer"></div>
@@ -281,9 +315,10 @@ function rJoin() {
       <input class="pin code" id="code" maxlength="6" placeholder="ABC123" value="${esc(S.joinCode || '')}" autocomplete="off" autocapitalize="characters" inputmode="text">
       ${I ? `<div class="row wrap"><span class="pill" style="border:2px solid ${catColor(I.category)}">${esc(I.category)}</span><span class="pill">${I.players}/${I.max_players} joueurs</span></div>` : ''}
     </div>
-    <div class="panel"><div class="lbl">Ton pseudo</div>
-      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words">
-      <p class="note">Il ne pourra plus être changé dans cette session.</p></div>
+    <div class="panel"><div class="lbl">Ton pseudo et ton avatar</div>
+      <div class="prow"><button class="av" data-act="avatar" aria-label="Changer d'avatar">${S.avatar}</button>
+      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words"></div>
+      <p class="note">Touche l'avatar pour en changer. Le pseudo et l'avatar ne pourront plus être changés dans cette session.</p></div>
     ${S.msg ? `<p class="err">${esc(S.msg)}</p>` : ''}
     <div class="spacer"></div>
     <button class="btn" data-act="dojoin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Connexion…' : 'Rejoindre'}</button></section>`;
@@ -293,19 +328,19 @@ function rHub() {
   if (!d) return rLoading();
   const me = d.me, stT = { not_started: 'Pas commencé', in_progress: 'En cours', done: 'Terminé' };
   const stC = { not_started: '', in_progress: 'gold', done: 'good' };
-  const players = d.players.map(p => `<div class="brow ${p.is_me ? 'me' : ''}"><span class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}</span>
+  const players = d.players.map(p => `<div class="brow ${p.is_me ? 'me' : ''}"><span class="em">${esc(p.avatar || '🦊')}</span><span class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}</span>
     <span class="pill ${stC[p.status]}">${stT[p.status]}</span>
     ${s.mk && !p.is_creator ? `<button class="x" data-act="rmask" data-n="${esc(p.nickname)}" aria-label="Retirer ${esc(p.nickname)}">✕</button>` : ''}</div>`).join('');
   let mine = '';
   if (me) {
     if (me.status === 'not_started') mine = `<div class="panel"><div class="lbl">À toi de jouer</div><p class="sub">10 questions, ${d.timer_s} secondes chacune. Le chrono démarre dès que la question s'affiche, et il continue si tu quittes la page.</p><button class="btn" data-act="play">Commencer</button></div>`;
     else if (me.status === 'in_progress') mine = `<div class="panel"><div class="lbl">En cours</div><p class="sub">${me.answered}/${TOTAL} questions · score actuel <b style="color:var(--gold)">${fmt(me.score)}</b></p><button class="btn" data-act="play">Reprendre</button></div>`;
-    else mine = `<div class="panel"><div class="lbl">Terminé</div><p class="sub">Ton score : <b style="color:var(--gold)">${fmt(me.score)}</b>. Le classement sera visible par tous à la fermeture de la session.</p></div>`;
+    else mine = `<div class="panel"><div class="lbl">Terminé</div><p class="sub">Ton score : <b style="color:var(--gold)">${fmt(me.score)}</b>. Le classement sera visible par tous à la fermeture de la session.</p><p class="note">La session se ferme toute seule quand tous les joueurs ont terminé, à condition qu'elle soit complète (6 joueurs) ou verrouillée par le créateur.</p></div>`;
   }
   let creator = '';
   if (s.mk) {
     creator = `<div class="panel"><div class="lbl">Gestion de la session</div>
-      ${d.everyone_finished ? '<p class="note warn">Tous les joueurs ont terminé : tu peux fermer la session.</p>' : ''}
+      ${d.everyone_finished ? '<p class="note warn">Tous les joueurs ont terminé. Verrouille la session pour la fermer et publier les résultats, ou ferme-la directement.</p>' : '<p class="note">La session se ferme toute seule quand tous les joueurs ont terminé, si elle est complète ou verrouillée.</p>'}
       <button class="btn red small" data-act="closeask">Fermer et publier les résultats</button>
       <button class="btn alt small" data-act="lock">${d.status === 'locked' ? 'Rouvrir aux nouveaux joueurs' : 'Verrouiller (plus de nouveaux joueurs)'}</button>
       <button class="btn alt small" data-act="copymk">Copier le lien de gestion</button>
@@ -346,7 +381,7 @@ async function loadResults() {
   else { const o = await api('qx_manage_overview', { p_code: S.code, p_manage_key: s.mk }); r = o.ok ? Object.assign(o, { my_review: [] }) : o; }
   if (r.error === 'network') return go('netfail');
   if (!r.ok) { toast(errText(r.error)); return go('home'); }
-  S.screen = 'results'; S.data = r; render();
+  S.screen = 'results'; S.data = r; render(); sfx.win();
 }
 function bilanHtml(r) {
   const rv = r.my_review || [];
@@ -381,9 +416,9 @@ function rResults() {
   const r = S.data, R = r.ranking, played = R.filter(x => x.rank != null);
   const top = played.filter(x => x.rank <= 3).slice(0, 3);
   const order = top.length >= 3 ? [1, 0, 2] : top.length === 2 ? [1, 0] : [0];
-  const pod = top.length ? order.map(k => { const p = top[k]; return `<div class="pod p${p.rank > 3 ? 3 : Math.min(3, k + 1)}"><span class="nm">${esc(p.nickname)}</span><span class="sc">${fmt(p.score)}</span><div class="blk">${p.rank}</div></div>`; }).join('') : '';
+  const pod = top.length ? order.map(k => { const p = top[k]; return `<div class="pod p${p.rank > 3 ? 3 : Math.min(3, k + 1)}"><span style="font-size:30px">${esc(p.avatar || '🦊')}</span><span class="nm">${esc(p.nickname)}</span><span class="sc">${fmt(p.score)}</span><div class="blk">${p.rank}</div></div>`; }).join('') : '';
   const ms = ms => ms == null ? '' : ' · ' + (ms / 1000).toFixed(1).replace('.', ',') + ' s sur les bonnes';
-  const rows = R.map(p => `<div class="brow ${p.is_me ? 'me' : ''} ${p.played ? '' : 'out'}"><span class="rk">${p.rank == null ? '–' : p.rank}</span>
+  const rows = R.map(p => `<div class="brow ${p.is_me ? 'me' : ''} ${p.played ? '' : 'out'}"><span class="rk">${p.rank == null ? '–' : p.rank}</span><span class="em">${esc(p.avatar || '🦊')}</span>
     <div class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}<div class="cmt">${p.played ? p.correct + ' bonnes réponses' + ms(p.time_correct_ms) : "n'a pas joué"}</div></div>
     <span class="s">${p.played ? fmt(p.score) : ''}</span></div>`).join('');
   $app.innerHTML = `<section class="screen"><h1 class="title">Résul<em>tats</em></h1>
@@ -405,13 +440,15 @@ async function play() {
   if (q.error === 'network') return go('netfail', { retryAct: 'play' });
   if (!q.ok) { toast(errText(q.error)); return loadHub(); }
   if (q.done) return loadHub();
-  S.q = q; S.t0 = performance.now(); S.locked = false; S.picked = -1;
+  S.q = q; S.t0 = performance.now(); S.locked = false; S.picked = -1; S.lastTick = -1;
   S.screen = 'question'; render(); loop();
 }
 function remaining() { return Math.max(0, S.q.remaining_ms - (performance.now() - S.t0)); }
 function loop() {
   const T = S.q.timer_ms, left = remaining();
   const n = document.getElementById('tnum'), b = document.getElementById('tfill'), bar = document.getElementById('tbar');
+  const sec = Math.ceil(left / 1000);
+  if (left <= 3000 && left > 0 && sec !== S.lastTick) { S.lastTick = sec; sfx.tick(); }
   if (n) n.textContent = Math.ceil(left / 1000);
   if (b) b.style.transform = 'scaleX(' + (left / T) + ')';
   if (bar) bar.classList.toggle('low', left <= 3000);
@@ -422,7 +459,7 @@ function rQuestion() {
   const q = S.q, L = ['A', 'B', 'C', 'D'], vf = q.type === 'vf';
   const btns = q.choices.map((t, i) => `<button class="ans" data-act="ans" data-i="${i}">${vf ? '' : `<b>${L[i]}</b>`}<span>${esc(t)}</span></button>`).join('');
   $app.innerHTML = `<section class="screen" style="--cc:${catColor(q.categorie)}">
-    <div class="qhead"><span class="pill">Question ${q.idx + 1}/${TOTAL}</span><span class="pill">Score ${fmt(q.score)}</span></div>
+    <div class="qhead"><span class="pill">Question ${q.idx + 1}/${TOTAL}</span><span class="pill"><span class="lab">Score</span><span class="val" id="qscore">${fmt(q.score)}</span></span></div>
     <div class="timer"><div class="tnum" id="tnum">${Math.ceil(remaining() / 1000)}</div><div class="tbar" id="tbar"><i id="tfill"></i></div></div>
     <div class="qcard"><span class="lbl" style="color:var(--cc)">${esc(q.categorie)}${vf ? ' · Vrai ou faux' : ''}</span><h2 class="qtext">${esc(q.question)}</h2></div>
     <div class="spacer"></div>
@@ -438,6 +475,7 @@ async function submit(pos) {
   if (r.error === 'network') { S.locked = false; S.pending = pos; return showMenu('retry'); }
   if (!r.ok) { toast(errText(r.error)); return loadHub(); }
   S.res = r; S.res.timeout = timeout || r.late;
+  (r.correct ? sfx.good : sfx.bad)();
   document.querySelectorAll('#answers .ans').forEach((b, i) => {
     b.classList.remove('pick');
     if (i === r.correct_pos) b.classList.add('right'); else if (i === pos) b.classList.add('wrong');
@@ -452,7 +490,8 @@ function rFeedback() {
     <div class="panel"><div class="lbl">La réponse était</div><div style="font-weight:800;font-size:19px">${esc(q.choices[r.correct_pos])}</div><p style="margin:0">${esc(r.anecdote)}</p></div>
     <div class="panel"><div class="lbl">Ton score</div><div class="huge" style="color:var(--gold)">${fmt(r.score)}</div><p class="note">Question ${r.idx + 1}/${TOTAL}</p></div>
     <div class="spacer"></div>
-    <button class="btn" data-act="${r.done ? 'hub' : 'play'}">${r.done ? 'Terminer' : 'Question suivante'}</button></section>`;
+    ${r.session_closed ? '<p class="note warn">Tous les joueurs ont terminé : la session est fermée et les résultats sont publiés.</p>' : ''}
+    <button class="btn" data-act="${r.done ? 'hub' : 'play'}">${r.done ? (r.session_closed ? 'Voir les résultats' : 'Terminer') : 'Question suivante'}</button></section>`;
 }
 
 /* ---------- Fenêtres ---------- */
@@ -471,21 +510,24 @@ function rOverlay() {
 function nickVal() { const el = document.getElementById('nick'); return el ? el.value.trim() : ''; }
 async function copy(t) { try { await navigator.clipboard.writeText(t); toast('Copié'); } catch (e) { prompt('Copie ce lien :', t); } }
 document.addEventListener('click', async e => {
+  ac();
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act, s = findS(S.code);
   switch (a) {
+    case 'mute': muted = !muted; try { localStorage.setItem('qx_muted', muted ? '1' : '0'); } catch (er) { } paintMute(); if (!muted) sfx.good(); break;
+    case 'avatar': S.nick = nickVal(); S.avatar = nextAvatar(S.avatar); saveAvatar(S.avatar); if (S.screen === 'join') S.joinCode = (document.getElementById('code').value || '').toUpperCase(); render(); break;
     case 'home': loadList(); go('home'); break;
-    case 'create': go('create', { cat: ALL, nick: (mem[0] && mem[0].nick) || '' }); break;
-    case 'join': go('join', {}); break;
+    case 'create': go('create', { cat: ALL, nick: (mem[0] && mem[0].nick) || '', avatar: lastAvatar() }); break;
+    case 'join': go('join', { avatar: lastAvatar() }); break;
     case 'cat': S.nick = nickVal(); S.cat = b.dataset.v; render(); break;
     case 'docreate': {
       S.nick = nickVal(); if (!S.nick) { S.msg = ERR.bad_nickname; return render(); }
       S.busy = true; S.msg = ''; render();
       const key = genKey();
-      const r = await api('qx_create_session', { p_nickname: S.nick, p_key: key, p_category: S.cat === ALL ? null : S.cat });
+      const r = await api('qx_create_session', { p_nickname: S.nick, p_key: key, p_category: S.cat === ALL ? null : S.cat, p_avatar: S.avatar });
       S.busy = false;
       if (!r.ok) { S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); return render(); }
-      upsertS({ code: r.code, nick: S.nick, key, mk: r.manage_key, cat: r.category, at: Date.now() });
+      upsertS({ code: r.code, nick: S.nick, av: S.avatar, key, mk: r.manage_key, cat: r.category, at: Date.now() });
       S.code = r.code; loadHub(); break;
     }
     case 'dojoin': {
@@ -495,10 +537,10 @@ document.addEventListener('click', async e => {
       const ex = findS(S.joinCode); if (ex && ex.key) { S.code = S.joinCode; return loadHub(); }
       S.busy = true; S.msg = ''; render();
       const key = genKey();
-      const r = await api('qx_join', { p_code: S.joinCode, p_nickname: S.nick, p_key: key });
+      const r = await api('qx_join', { p_code: S.joinCode, p_nickname: S.nick, p_key: key, p_avatar: S.avatar });
       S.busy = false;
       if (!r.ok) { S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); return render(); }
-      upsertS({ code: r.code, nick: r.nickname, key, cat: r.category || ALL, at: Date.now() });
+      upsertS({ code: r.code, nick: r.nickname, av: S.avatar, key, cat: r.category || ALL, at: Date.now() });
       S.code = r.code; loadHub(); break;
     }
     case 'open': S.code = b.dataset.code; loadHub(); break;
@@ -549,7 +591,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && S.
   if (c.length === 6) {
     history.replaceState(null, '', location.pathname);
     if (findS(c)) { S.code = c; return loadHub(); }
-    S.joinCode = c; S.nick = ''; S.screen = 'join'; render(); return peekCode(c);
+    S.joinCode = c; S.nick = ''; S.avatar = lastAvatar(); S.screen = 'join'; render(); return peekCode(c);
   }
   render();
 })();
