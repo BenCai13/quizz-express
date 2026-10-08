@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0b24">
+<title>Quizz Express à distance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0b24; --bg2:#1d1855; --card:#1f1a58; --card2:#2a247a;
+  --ink:#f6f4ff; --muted:#aaa5da; --gold:#ffc93c; --good:#2ee59d; --bad:#ff4d6d;
+  --line:rgba(255,255,255,.14);
+  --f-display:'Bungee',Impact,'Arial Black',sans-serif;
+  --f-body:'Outfit',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background-color:var(--bg);background-image:radial-gradient(120% 60% at 50% -10%,var(--bg2) 0%,transparent 70%);background-repeat:no-repeat;color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.35;padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0);-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+#shell{max-width:480px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding-block:12px 16px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:40px}
+.brand{font-family:var(--f-display);font-size:15px;letter-spacing:.04em;color:var(--gold)}
+.brand small{font-family:var(--f-body);font-weight:800;font-size:11px;letter-spacing:.12em;color:var(--muted);margin-left:6px}
+.icon-btn{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;min-width:44px;height:40px;font:600 14px var(--f-body);padding:0 12px;cursor:pointer}
+#app{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0}
+.screen{flex:1;display:flex;flex-direction:column;gap:14px;min-width:0}
+h1,h2,h3{margin:0;text-wrap:balance}
+.title{font-family:var(--f-display);font-size:32px;line-height:1.02}
+.title em{font-style:normal;color:var(--gold)}
+.sub{color:var(--muted);margin:0}
+.lbl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.btn{font:800 18px var(--f-body);border:0;border-radius:16px;min-height:56px;padding:0 20px;cursor:pointer;color:#1a1200;background:var(--gold);box-shadow:0 5px 0 #b88a0b;transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 1px 0 #b88a0b}
+.btn.alt{background:var(--card2);color:var(--ink);box-shadow:0 5px 0 #14104a}
+.btn.alt:active{box-shadow:0 1px 0 #14104a}
+.btn.red{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a3203b}
+.btn.red:active{box-shadow:0 1px 0 #a3203b}
+.btn.small{min-height:44px;font-size:15px;padding:0 14px;box-shadow:0 3px 0 #14104a}
+.btn.small.gold{box-shadow:0 3px 0 #b88a0b}
+.btn:disabled{opacity:.45}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.row{display:flex;gap:10px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.pin{width:100%;height:52px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:600 18px var(--f-body);padding:0 12px}
+.pin.code{font-family:var(--f-display);font-size:26px;letter-spacing:.2em;text-align:center;text-transform:uppercase}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip.all{grid-column:1/-1;justify-content:center;font-weight:800}
+.chip{border:2px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:600 15px var(--f-body);min-height:48px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left}
+.chip i{width:14px;height:14px;border-radius:4px;background:var(--cc);flex:none}
+.chip[aria-pressed="true"]{border-color:var(--cc);background:color-mix(in srgb,var(--cc) 22%,var(--bg))}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note.warn{color:var(--gold)}
+.err{color:var(--bad);font-weight:800;margin:0}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 12px;background:var(--card2);font-weight:800;font-size:13px;white-space:nowrap}
+.pill.good{background:color-mix(in srgb,var(--good) 25%,var(--card2))}
+.pill.gold{background:color-mix(in srgb,var(--gold) 28%,var(--card2))}
+.pill.bad{background:color-mix(in srgb,var(--bad) 30%,var(--card2))}
+.spacer{flex:1}
+.stage{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:14px}
+.huge{font-family:var(--f-display);font-size:30px;line-height:1.05}
+.codebig{font-family:var(--f-display);font-size:42px;letter-spacing:.14em;color:var(--gold);line-height:1}
+.scard{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-left:8px solid var(--cc,var(--gold));border-radius:14px;padding:10px 12px;cursor:pointer;width:100%;text-align:left;color:var(--ink);font:600 16px var(--f-body)}
+.scard .m{flex:1;min-width:0}
+.scard .m b{font-family:var(--f-display);font-weight:400;letter-spacing:.1em;font-size:18px}
+.scard .m span{display:block;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board{display:flex;flex-direction:column;gap:6px}
+.brow{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:8px 10px;border-left:6px solid var(--pc,var(--line))}
+.brow.me{background:color-mix(in srgb,var(--gold) 14%,var(--bg))}
+.brow.out{opacity:.55}
+.brow .n{flex:1;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .s{font-family:var(--f-display);font-size:17px;font-variant-numeric:tabular-nums}
+.brow .rk{font-family:var(--f-display);width:28px;text-align:center;color:var(--gold)}
+.cmt{font-size:13px;color:var(--muted);white-space:normal;overflow:visible;text-overflow:clip}
+.x{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.timer{display:flex;align-items:center;gap:12px}
+.tnum{font-family:var(--f-display);font-size:44px;min-width:70px;text-align:center;line-height:1}
+.tbar{flex:1;height:16px;border-radius:99px;background:var(--bg);overflow:hidden;border:1px solid var(--line)}
+.tbar i{display:block;height:100%;width:100%;background:var(--good);transform-origin:left}
+.tbar.low i{background:var(--bad)}
+.qcard{border-radius:20px;padding:18px;background:var(--card);border:1px solid var(--line);border-top:8px solid var(--cc);display:flex;flex-direction:column;gap:10px;justify-content:center;min-height:150px}
+.qtext{font-size:23px;font-weight:800;line-height:1.2;text-wrap:balance;margin:0}
+.answers{display:grid;gap:10px}
+.answers.vf{grid-template-columns:1fr 1fr}
+.ans{display:flex;align-items:center;gap:12px;text-align:left;font:700 18px var(--f-body);color:var(--ink);background:var(--card2);border:2px solid var(--line);border-radius:16px;min-height:60px;padding:8px 14px;cursor:pointer;width:100%}
+.ans b{font-family:var(--f-display);font-weight:400;width:30px;height:30px;border-radius:8px;background:var(--bg);display:grid;place-items:center;flex:none;font-size:14px}
+.answers.vf .ans{justify-content:center;min-height:84px;font-size:24px}
+.ans:active{transform:scale(.98)}
+.ans.pick{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 25%,var(--card2))}
+.ans.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 30%,var(--card2))}
+.ans.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 30%,var(--card2))}
+.banner{border-radius:18px;padding:14px;text-align:center;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 16%,var(--card))}
+.banner .pts{font-family:var(--f-display);font-size:46px;line-height:1;color:var(--c)}
+.banner p{margin:4px 0 0;font-weight:800}
+.podium{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end;margin-top:6px}
+.pod{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.pod .blk{width:100%;border-radius:12px 12px 0 0;background:var(--card2);display:grid;place-items:center;font-family:var(--f-display);font-size:26px;border-top:5px solid var(--gold)}
+.pod .nm{font-weight:800;font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod .sc{font-family:var(--f-display);font-size:14px;color:var(--gold)}
+.pod.p1 .blk{height:110px;background:color-mix(in srgb,var(--gold) 35%,var(--card2))}
+.pod.p2 .blk{height:80px}
+.pod.p3 .blk{height:60px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{background:var(--bg);border-radius:14px;padding:10px 6px;text-align:center;border-top:4px solid var(--c)}
+.tile b{display:block;font-family:var(--f-display);font-weight:400;font-size:28px;color:var(--c);line-height:1.1}
+.tile span{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.seg{display:grid;grid-template-columns:repeat(10,1fr);gap:4px}
+.seg i{height:22px;border-radius:6px;background:var(--c)}
+.seg-l{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;font-size:11px;color:var(--muted);text-align:center}
+.hb{display:grid;grid-template-columns:104px 1fr 62px;gap:8px;align-items:center;font-size:13px}
+.hb .nm{font-weight:800;line-height:1.15}
+.hb .nm small{display:block;color:var(--muted);font-weight:600}
+.hb .track{position:relative;height:18px;background:var(--bg);border-radius:6px}
+.hb .fill{position:absolute;top:0;bottom:0;border-radius:6px;background:var(--cc)}
+.hb .v{font-family:var(--f-display);font-size:14px;text-align:right}
+.hb .v.neg{color:var(--bad)}
+.zero{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--line)}
+.fold{border:2px dashed var(--line);background:transparent;color:var(--ink);border-radius:14px;min-height:48px;font:800 15px var(--f-body);width:100%;cursor:pointer}
+.rev{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.rev .q{font-weight:800}
+.rev .ok{color:var(--good);font-weight:800}
+.rev .ko{color:var(--bad);font-weight:800}
+.overlay{position:fixed;inset:0;background:rgba(8,6,28,.86);display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:10}
+.sheet{width:100%;max-width:480px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;font-weight:800;z-index:20}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.pop{animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}.btn{transition:none}}
+@media (max-width:360px){.title{font-size:27px}.qtext{font-size:20px}}
+</style>
+</head>
+<body>
+<div id="shell">
+  <div class="top">
+    <span class="brand">QUIZZ EXPRESS<small>À DISTANCE</small></span>
+    <button class="icon-btn" id="homebtn" data-act="home" aria-label="Accueil" hidden>Accueil</button>
+  </div>
+  <main id="app" aria-live="polite"></main>
+</div>
+<div id="ovl"></div>
+<div id="toast"></div>
+<script src="config.js"></script>
+<script>
+"use strict";
+const CATS = [
+  { id: 'Géographie', color: '#2f7fff' }, { id: 'Divertissement', color: '#ff4fa3' },
+  { id: 'Histoire', color: '#ffd23f' }, { id: 'Art et Littérature', color: '#c2814f' },
+  { id: 'Sciences et Nature', color: '#2ee59d' }, { id: 'Sports et Loisirs', color: '#ff8a2b' }
+];
+const ALL = 'Toutes catégories';
+const catColor = id => (CATS.find(c => c.id === id) || { color: '#ffc93c' }).color;
+const TOTAL = 10;
+const ERR = {
+  not_found: "Session introuvable. Vérifie le code : elle a peut-être été supprimée.",
+  rate_limited: "Trop de tentatives. Réessaie dans quelques minutes.",
+  bad_key: "Erreur technique de clé. Recharge la page.",
+  bad_nickname: "Choisis un pseudo de 1 à 20 caractères.",
+  bad_category: "Catégorie inconnue.",
+  busy: "Le service est très demandé. Réessaie plus tard.",
+  bank_incomplete: "Pas assez de questions dans cette catégorie.",
+  closed: "Cette session est fermée.",
+  locked: "Le créateur a verrouillé la session : plus personne ne peut la rejoindre.",
+  full: "La session est complète (6 joueurs maximum).",
+  nickname_taken: "Ce pseudo est déjà pris dans cette session.",
+  not_closed: "La session n'est pas encore fermée.",
+  not_current: "Cette question n'est plus en cours.",
+  already_done: "Tu as déjà terminé tes 10 questions.",
+  bad_choice: "Réponse invalide.",
+  no_such_player: "Joueur introuvable.",
+  cannot_remove_creator: "Le créateur ne peut pas être retiré.",
+  server: "Le serveur ne répond pas comme prévu. Réessaie dans un instant."
+};
+const errText = e => ERR[e] || ERR.server;
+
+/* ---------- Stockage local (sessions de cet appareil) ---------- */
+let mem = [];
+function loadList() {
+  try { const v = JSON.parse(localStorage.getItem('qx_sessions') || 'null'); if (Array.isArray(v)) mem = v; } catch (e) { }
+  return mem;
+}
+function saveList() { try { localStorage.setItem('qx_sessions', JSON.stringify(mem)); } catch (e) { } }
+function findS(code) { return mem.find(s => s.code === code); }
+function upsertS(s) {
+  const i = mem.findIndex(x => x.code === s.code);
+  if (i >= 0) mem[i] = Object.assign(mem[i], s); else mem.unshift(s);
+  saveList();
+}
+function removeS(code) { mem = mem.filter(s => s.code !== code); saveList(); }
+function genKey() {
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', b = new Uint8Array(32);
+  crypto.getRandomValues(b); return Array.from(b, x => A[x % A.length]).join('');
+}
+
+/* ---------- API ---------- */
+async function api(fn, args) {
+  const C = window.QX_CONFIG, h = { 'Content-Type': 'application/json', apikey: C.key };
+  if (!C.key.startsWith('sb_')) h.Authorization = 'Bearer ' + C.key;
+  let r;
+  try { r = await fetch(C.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: h, body: JSON.stringify(args || {}) }); }
+  catch (e) { return { ok: false, error: 'network' }; }
+  let j = null;
+  try { j = await r.json(); } catch (e) { }
+  if (!r.ok || !j || typeof j !== 'object') return { ok: false, error: r.status >= 500 || r.status === 0 ? 'network' : 'server' };
+  return j;
+}
+
+/* ---------- Etat ---------- */
+const $app = document.getElementById('app'), $ovl = document.getElementById('ovl');
+let S = { screen: 'home', code: null, data: null, menu: null, busy: false, msg: '' };
+let poll = 0, qt = { raf: 0, timeouts: [] };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('fr-FR');
+const fmtS = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleString('fr-FR');
+const fdate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
+const shareUrl = code => location.origin + location.pathname + '?s=' + code;
+function toast(t) { const el = document.getElementById('toast'); el.innerHTML = '<div class="toast">' + esc(t) + '</div>'; setTimeout(() => el.innerHTML = '', 2200); }
+function stopTimers() { cancelAnimationFrame(qt.raf); qt.timeouts.forEach(clearTimeout); qt.timeouts = []; clearInterval(poll); poll = 0; }
+function go(screen, extra) { stopTimers(); S = Object.assign({ screen, code: S.code, data: null, menu: null, busy: false, msg: '' }, extra || {}); render(); }
+
+/* ---------- Ecrans ---------- */
+function render() {
+  document.getElementById('homebtn').hidden = S.screen === 'home' || S.screen === 'question';
+  ({ home: rHome, create: rCreate, join: rJoin, hub: rHub, loading: rLoading, question: rQuestion, feedback: rFeedback, results: rResults, netfail: rNetFail })[S.screen]();
+  rOverlay();
+}
+function rLoading() { $app.innerHTML = '<div class="stage"><div class="huge">Chargement…</div></div>'; }
+function rNetFail() {
+  $app.innerHTML = `<section class="screen"><div class="stage"><div class="huge">Connexion impossible</div>
+    <p class="sub">Vérifie ta connexion. Si le service est en pause (après 7 jours sans activité), il redémarre en une minute environ.</p></div>
+    <button class="btn" data-act="retry">Réessayer</button><button class="btn alt" data-act="home">Accueil</button></section>`;
+}
+function rHome() {
+  const list = mem.map(s => `<button class="scard" style="--cc:${catColor(s.cat)}" data-act="open" data-code="${esc(s.code)}">
+    <div class="m"><b>${esc(s.code)}</b><span>${esc(s.cat || ALL)} · ${esc(s.nick || 'Gestion seule')}${s.mk ? ' · créateur' : ''}</span></div>
+    <span class="pill" id="st-${esc(s.code)}">…</span></button>`).join('');
+  $app.innerHTML = `<section class="screen">
+    <h1 class="title">Quizz <em>Express</em> à distance</h1>
+    <p class="sub">Jusqu'à 6 joueurs, les mêmes 10 questions pour tous, chacun joue quand il veut pendant 7 jours.</p>
+    <button class="btn" data-act="create">Créer une session</button>
+    <button class="btn alt" data-act="join">Rejoindre avec un code</button>
+    ${mem.length ? `<div class="lbl">Mes sessions sur cet appareil</div><div class="board">${list}</div>` : ''}
+    <div class="spacer"></div>
+    <p class="note">Aucune donnée personnelle : seul ton pseudo est enregistré, et il est effacé 30 jours après la fermeture de la session.</p>
+  </section>`;
+  mem.forEach(refreshBadge);
+}
+async function refreshBadge(s) {
+  let r;
+  if (s.key) r = await api('qx_get_session', { p_code: s.code, p_key: s.key });
+  else if (s.mk) r = await api('qx_manage_overview', { p_code: s.code, p_manage_key: s.mk });
+  const el = document.getElementById('st-' + s.code); if (!el || !r) return;
+  if (r.error === 'network') { el.textContent = 'hors ligne'; return; }
+  if (!r.ok) { el.textContent = 'supprimée'; el.className = 'pill bad'; return; }
+  const my = r.me ? r.me.status : null;
+  if (r.status === 'closed') { el.textContent = 'Résultats'; el.className = 'pill gold'; }
+  else if (my === 'done') { el.textContent = 'Terminé'; el.className = 'pill good'; }
+  else if (my === 'in_progress') { el.textContent = 'En cours'; el.className = 'pill gold'; }
+  else if (my === 'not_started') { el.textContent = 'À jouer'; el.className = 'pill gold'; }
+  else { el.textContent = r.status === 'locked' ? 'Verrouillée' : 'Ouverte'; }
+}
+function rCreate() {
+  const chips = CATS.map(c => `<button class="chip" style="--cc:${c.color}" data-act="cat" data-v="${esc(c.id)}" aria-pressed="${S.cat === c.id}"><i></i>${esc(c.id)}</button>`).join('')
+    + `<button class="chip all" style="--cc:#ffc93c" data-act="cat" data-v="${ALL}" aria-pressed="${S.cat === ALL}"><i></i>${ALL}</button>`;
+  $app.innerHTML = `<section class="screen"><h1 class="title">Nouvelle <em>session</em></h1>
+    <div class="panel"><div class="lbl">Ton pseudo</div>
+      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words">
+      <p class="note">Il ne pourra plus être changé dans cette session.</p></div>
+    <div class="panel"><div class="lbl">Catégorie</div><div class="chips">${chips}</div></div>
+    ${S.msg ? `<p class="err">${esc(S.msg)}</p>` : ''}
+    <div class="spacer"></div>
+    <button class="btn" data-act="docreate" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Création…' : 'Créer la session'}</button></section>`;
+}
+function rJoin() {
+  const I = S.peek;
+  $app.innerHTML = `<section class="screen"><h1 class="title">Rejoindre une <em>session</em></h1>
+    <div class="panel"><div class="lbl">Code de la session</div>
+      <input class="pin code" id="code" maxlength="6" placeholder="ABC123" value="${esc(S.joinCode || '')}" autocomplete="off" autocapitalize="characters" inputmode="text">
+      ${I ? `<div class="row wrap"><span class="pill" style="border:2px solid ${catColor(I.category)}">${esc(I.category)}</span><span class="pill">${I.players}/${I.max_players} joueurs</span></div>` : ''}
+    </div>
+    <div class="panel"><div class="lbl">Ton pseudo</div>
+      <input class="pin" id="nick" maxlength="20" placeholder="Pseudo" value="${esc(S.nick || '')}" autocomplete="off" autocapitalize="words">
+      <p class="note">Il ne pourra plus être changé dans cette session.</p></div>
+    ${S.msg ? `<p class="err">${esc(S.msg)}</p>` : ''}
+    <div class="spacer"></div>
+    <button class="btn" data-act="dojoin" ${S.busy ? 'disabled' : ''}>${S.busy ? 'Connexion…' : 'Rejoindre'}</button></section>`;
+}
+function rHub() {
+  const d = S.data, s = findS(S.code) || {};
+  if (!d) return rLoading();
+  const me = d.me, stT = { not_started: 'Pas commencé', in_progress: 'En cours', done: 'Terminé' };
+  const stC = { not_started: '', in_progress: 'gold', done: 'good' };
+  const players = d.players.map(p => `<div class="brow ${p.is_me ? 'me' : ''}"><span class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}</span>
+    <span class="pill ${stC[p.status]}">${stT[p.status]}</span>
+    ${s.mk && !p.is_creator ? `<button class="x" data-act="rmask" data-n="${esc(p.nickname)}" aria-label="Retirer ${esc(p.nickname)}">✕</button>` : ''}</div>`).join('');
+  let mine = '';
+  if (me) {
+    if (me.status === 'not_started') mine = `<div class="panel"><div class="lbl">À toi de jouer</div><p class="sub">10 questions, ${d.timer_s} secondes chacune. Le chrono démarre dès que la question s'affiche, et il continue si tu quittes la page.</p><button class="btn" data-act="play">Commencer</button></div>`;
+    else if (me.status === 'in_progress') mine = `<div class="panel"><div class="lbl">En cours</div><p class="sub">${me.answered}/${TOTAL} questions · score actuel <b style="color:var(--gold)">${fmt(me.score)}</b></p><button class="btn" data-act="play">Reprendre</button></div>`;
+    else mine = `<div class="panel"><div class="lbl">Terminé</div><p class="sub">Ton score : <b style="color:var(--gold)">${fmt(me.score)}</b>. Le classement sera visible par tous à la fermeture de la session.</p></div>`;
+  }
+  let creator = '';
+  if (s.mk) {
+    creator = `<div class="panel"><div class="lbl">Gestion de la session</div>
+      ${d.everyone_finished ? '<p class="note warn">Tous les joueurs ont terminé : tu peux fermer la session.</p>' : ''}
+      <button class="btn red small" data-act="closeask">Fermer et publier les résultats</button>
+      <button class="btn alt small" data-act="lock">${d.status === 'locked' ? 'Rouvrir aux nouveaux joueurs' : 'Verrouiller (plus de nouveaux joueurs)'}</button>
+      <button class="btn alt small" data-act="copymk">Copier le lien de gestion</button>
+      <p class="note">Le lien de gestion te permet de gérer la session depuis un autre appareil. Garde-le pour toi.</p></div>`;
+  }
+  $app.innerHTML = `<section class="screen">
+    <div class="row wrap" style="justify-content:space-between"><div><div class="lbl">Code</div><div class="codebig">${esc(d.code)}</div></div>
+      <div class="row wrap"><span class="pill" style="border:2px solid ${catColor(d.category)}">${esc(d.category)}</span><span class="pill ${d.status === 'locked' ? 'bad' : 'good'}">${d.status === 'locked' ? 'Verrouillée' : 'Ouverte'}</span></div></div>
+    <p class="note">Fermeture automatique le ${esc(fdate(d.expires_at))}.</p>
+    <div class="row"><button class="btn small gold" style="flex:1" data-act="share">Inviter</button><button class="btn alt small" data-act="refresh">Actualiser</button></div>
+    ${mine}
+    <div class="panel"><div class="lbl">Joueurs (${d.players.length}/${d.max_players || 6})</div><div class="board">${players}</div></div>
+    ${creator}
+    <button class="btn alt small" data-act="forget">Retirer cette session de mon appareil</button>
+  </section>`;
+}
+async function loadHub(quiet) {
+  const s = findS(S.code); if (!s) return go('home');
+  if (!quiet) { S.screen = 'loading'; render(); }
+  let d;
+  if (s.key) {
+    d = await api('qx_get_session', { p_code: S.code, p_key: s.key });
+    if (d.ok && s.mk) { const o = await api('qx_manage_overview', { p_code: S.code, p_manage_key: s.mk }); if (o.ok) { d.players = o.players.map(p => Object.assign({}, p, { is_me: p.nickname === d.me.nickname })); d.everyone_finished = o.everyone_finished; } }
+  } else if (s.mk) {
+    const o = await api('qx_manage_overview', { p_code: S.code, p_manage_key: s.mk });
+    d = o.ok ? Object.assign(o, { me: null, timer_s: 10 }) : o;
+  } else d = { ok: false, error: 'not_found' };
+  if (d.error === 'network') { if (quiet) return; return go('netfail'); }
+  if (!d.ok) { toast(errText(d.error)); if (d.error === 'not_found') removeS(S.code); return go('home'); }
+  if (d.status === 'closed') return loadResults();
+  S.screen = 'hub'; S.data = d; render();
+  if (!poll) poll = setInterval(() => { if (!document.hidden && S.screen === 'hub' && !S.menu) loadHub(true); }, 15000);
+}
+async function loadResults() {
+  const s = findS(S.code); S.screen = 'loading'; render();
+  let r;
+  if (s.key) r = await api('qx_get_results', { p_code: S.code, p_key: s.key });
+  else { const o = await api('qx_manage_overview', { p_code: S.code, p_manage_key: s.mk }); r = o.ok ? Object.assign(o, { my_review: [] }) : o; }
+  if (r.error === 'network') return go('netfail');
+  if (!r.ok) { toast(errText(r.error)); return go('home'); }
+  S.screen = 'results'; S.data = r; render();
+}
+function bilanHtml(r) {
+  const rv = r.my_review || [];
+  if (!rv.length) return '';
+  const ok = rv.filter(q => q.correct).length, na = rv.filter(q => q.unanswered).length, ko = rv.length - ok - na;
+  const colr = { ok: 'var(--good)', ko: 'var(--bad)', na: '#6d68a8' };
+  const kind = q => q.correct ? 'ok' : q.unanswered ? 'na' : 'ko';
+  const byIdx = [...rv].sort((a, b) => a.idx - b.idx);
+  const seg = '<div class="seg">' + byIdx.map(q => `<i style="--c:${colr[kind(q)]}"></i>`).join('') + '</div><div class="seg-l">' + byIdx.map(q => `<span>${q.idx + 1}</span>`).join('') + '</div>';
+  const single = r.category !== ALL;
+  const keyOf = q => single ? (q.idx < 2 ? 'Facile' : q.idx < 6 ? 'Moyen' : 'Difficile') : q.categorie;
+  const keys = single ? ['Facile', 'Moyen', 'Difficile'] : CATS.map(c => c.id);
+  const groups = keys.map(k => { const g = rv.filter(q => keyOf(q) === k); return g.length ? { k, n: g.length, ok: g.filter(q => q.correct).length, na: g.filter(q => q.unanswered).length, pts: g.reduce((a, q) => a + q.points, 0) } : null; }).filter(Boolean);
+  const lo = Math.min(-400, ...groups.map(g => g.pts)), hi = Math.max(1000, ...groups.map(g => g.pts)), span = hi - lo, z = -lo / span * 100;
+  const bars = groups.map(g => {
+    const w = Math.abs(g.pts) / span * 100, left = g.pts >= 0 ? z : z - w;
+    const col = g.pts < 0 ? 'var(--bad)' : (single ? catColor(r.category) : catColor(g.k));
+    const sub = g.na === g.n ? 'sans réponse' : g.ok + '/' + g.n + (g.ok > 1 ? ' bonnes' : ' bonne');
+    return `<div class="hb" style="--cc:${col}"><div class="nm">${esc(g.k)}<small>${sub}</small></div><div class="track"><div class="fill" style="left:${left.toFixed(1)}%;width:${w.toFixed(1)}%"></div><div class="zero" style="left:${z.toFixed(1)}%"></div></div><div class="v ${g.pts < 0 ? 'neg' : ''}">${fmtS(g.pts)}</div></div>`;
+  }).join('');
+  const detail = S.showDetail ? rv.map(q => `<div class="rev"><div class="q">${q.idx + 1}. ${esc(q.question)}</div>
+    <div>${q.unanswered ? '<span class="ko">Sans réponse</span>' : `Ta réponse : <span class="${q.correct ? 'ok' : 'ko'}">${esc(q.my_answer)}</span>`} · ${fmtS(q.points)} pts</div>
+    ${q.correct ? '' : `<div>Bonne réponse : <span class="ok">${esc(q.correct_answer)}</span></div>`}
+    <div class="cmt">${esc(q.anecdote)}</div></div>`).join('') : '';
+  return `<div class="panel"><div class="lbl">Mon bilan</div>
+    <div class="tiles"><div class="tile" style="--c:var(--good)"><b>${ok}/${rv.length}</b><span>Bonnes</span></div><div class="tile" style="--c:var(--bad)"><b>${ko}</b><span>Fausses</span></div><div class="tile" style="--c:#8f8ad0"><b>${na}</b><span>Sans réponse</span></div></div>
+    <div class="lbl" style="margin-top:4px">Mes ${rv.length} questions</div>${seg}
+    <div class="lbl" style="margin-top:4px">${single ? 'Points par difficulté' : 'Points par catégorie'}</div>${bars}
+    <button class="fold" data-act="toggledetail">${S.showDetail ? 'Masquer le détail ▴' : 'Voir le détail des questions ▾'}</button>${detail}</div>`;
+}
+function rResults() {
+  const r = S.data, R = r.ranking, played = R.filter(x => x.rank != null);
+  const top = played.filter(x => x.rank <= 3).slice(0, 3);
+  const order = top.length >= 3 ? [1, 0, 2] : top.length === 2 ? [1, 0] : [0];
+  const pod = top.length ? order.map(k => { const p = top[k]; return `<div class="pod p${p.rank > 3 ? 3 : Math.min(3, k + 1)}"><span class="nm">${esc(p.nickname)}</span><span class="sc">${fmt(p.score)}</span><div class="blk">${p.rank}</div></div>`; }).join('') : '';
+  const ms = ms => ms == null ? '' : ' · ' + (ms / 1000).toFixed(1).replace('.', ',') + ' s sur les bonnes';
+  const rows = R.map(p => `<div class="brow ${p.is_me ? 'me' : ''} ${p.played ? '' : 'out'}"><span class="rk">${p.rank == null ? '–' : p.rank}</span>
+    <div class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}<div class="cmt">${p.played ? p.correct + ' bonnes réponses' + ms(p.time_correct_ms) : "n'a pas joué"}</div></div>
+    <span class="s">${p.played ? fmt(p.score) : ''}</span></div>`).join('');
+  $app.innerHTML = `<section class="screen"><h1 class="title">Résul<em>tats</em></h1>
+    <div class="row wrap"><span class="pill">Code ${esc(r.code)}</span><span class="pill" style="border:2px solid ${catColor(r.category)}">${esc(r.category)}</span></div>
+    ${pod ? `<div class="podium pop">${pod}</div>` : ''}
+    <div class="board">${rows}</div>
+    ${bilanHtml(r)}
+    <p class="note">Résultats conservés jusqu'au ${esc(fdate(r.purge_at))}, puis supprimés.</p>
+    <div class="spacer"></div>
+    <button class="btn" data-act="create">Créer une nouvelle session</button>
+    <button class="btn alt small" data-act="forget">Retirer cette session de mon appareil</button></section>`;
+}
+
+/* ---------- Jeu ---------- */
+async function play() {
+  const s = findS(S.code);
+  S.screen = 'loading'; render();
+  const q = await api('qx_next_question', { p_code: S.code, p_key: s.key });
+  if (q.error === 'network') return go('netfail', { retryAct: 'play' });
+  if (!q.ok) { toast(errText(q.error)); return loadHub(); }
+  if (q.done) return loadHub();
+  S.q = q; S.t0 = performance.now(); S.locked = false; S.picked = -1;
+  S.screen = 'question'; render(); loop();
+}
+function remaining() { return Math.max(0, S.q.remaining_ms - (performance.now() - S.t0)); }
+function loop() {
+  const T = S.q.timer_ms, left = remaining();
+  const n = document.getElementById('tnum'), b = document.getElementById('tfill'), bar = document.getElementById('tbar');
+  if (n) n.textContent = Math.ceil(left / 1000);
+  if (b) b.style.transform = 'scaleX(' + (left / T) + ')';
+  if (bar) bar.classList.toggle('low', left <= 3000);
+  if (left <= 0) { qt.timeouts.push(setTimeout(() => submit(null), 150)); return; }
+  qt.raf = requestAnimationFrame(loop);
+}
+function rQuestion() {
+  const q = S.q, L = ['A', 'B', 'C', 'D'], vf = q.type === 'vf';
+  const btns = q.choices.map((t, i) => `<button class="ans" data-act="ans" data-i="${i}">${vf ? '' : `<b>${L[i]}</b>`}<span>${esc(t)}</span></button>`).join('');
+  $app.innerHTML = `<section class="screen" style="--cc:${catColor(q.categorie)}">
+    <div class="qhead"><span class="pill">Question ${q.idx + 1}/${TOTAL}</span><span class="pill">Score ${fmt(q.score)}</span></div>
+    <div class="timer"><div class="tnum" id="tnum">${Math.ceil(remaining() / 1000)}</div><div class="tbar" id="tbar"><i id="tfill"></i></div></div>
+    <div class="qcard"><span class="lbl" style="color:var(--cc)">${esc(q.categorie)}${vf ? ' · Vrai ou faux' : ''}</span><h2 class="qtext">${esc(q.question)}</h2></div>
+    <div class="spacer"></div>
+    <div class="answers ${vf ? 'vf' : ''}" id="answers">${btns}</div></section>`;
+}
+async function submit(pos) {
+  if (S.locked) return; S.locked = true; cancelAnimationFrame(qt.raf);
+  const q = S.q, timeout = pos == null;
+  const claimed = timeout ? q.timer_ms + 1 : Math.round(q.timer_ms - q.remaining_ms + (performance.now() - S.t0));
+  S.picked = pos;
+  document.querySelectorAll('#answers .ans').forEach((b, i) => { b.disabled = true; if (i === pos) b.classList.add('pick'); });
+  const r = await api('qx_submit_answer', { p_code: S.code, p_key: findS(S.code).key, p_idx: q.idx, p_pos: timeout ? 0 : pos, p_elapsed_ms: claimed });
+  if (r.error === 'network') { S.locked = false; S.pending = pos; return showMenu('retry'); }
+  if (!r.ok) { toast(errText(r.error)); return loadHub(); }
+  S.res = r; S.res.timeout = timeout || r.late;
+  document.querySelectorAll('#answers .ans').forEach((b, i) => {
+    b.classList.remove('pick');
+    if (i === r.correct_pos) b.classList.add('right'); else if (i === pos) b.classList.add('wrong');
+  });
+  qt.timeouts.push(setTimeout(() => { S.screen = 'feedback'; render(); }, timeout ? 300 : 700));
+}
+function rFeedback() {
+  const r = S.res, q = S.q, c = r.correct ? 'var(--good)' : 'var(--bad)';
+  const title = r.correct ? 'Bonne réponse' : r.late ? 'Temps écoulé' : 'Mauvaise réponse';
+  $app.innerHTML = `<section class="screen">
+    <div class="banner pop" style="--c:${c}"><div class="pts">${fmtS(r.points)}</div><p>${title}</p></div>
+    <div class="panel"><div class="lbl">La réponse était</div><div style="font-weight:800;font-size:19px">${esc(q.choices[r.correct_pos])}</div><p style="margin:0">${esc(r.anecdote)}</p></div>
+    <div class="panel"><div class="lbl">Ton score</div><div class="huge" style="color:var(--gold)">${fmt(r.score)}</div><p class="note">Question ${r.idx + 1}/${TOTAL}</p></div>
+    <div class="spacer"></div>
+    <button class="btn" data-act="${r.done ? 'hub' : 'play'}">${r.done ? 'Terminer' : 'Question suivante'}</button></section>`;
+}
+
+/* ---------- Fenêtres ---------- */
+function showMenu(m, extra) { S.menu = m; Object.assign(S, extra || {}); rOverlay(); }
+function rOverlay() {
+  if (!S.menu) { $ovl.innerHTML = ''; return; }
+  const m = S.menu; let h = '';
+  if (m === 'retry') h = `<h2 class="huge" style="font-size:22px">Connexion perdue</h2><p class="sub">Ta réponse n'est pas partie. Le chrono tourne toujours côté serveur.</p><button class="btn" data-act="retrysubmit">Réessayer</button>`;
+  else if (m === 'closeask') h = `<h2 class="huge" style="font-size:22px">Fermer la session ?</h2><p class="sub">Les résultats deviennent visibles pour tous. Les joueurs qui n'ont pas fini perdent 100 points par question restante.</p><button class="btn red" data-act="closeyes">Oui, fermer</button><button class="btn alt" data-act="nomenu">Annuler</button>`;
+  else if (m === 'rm') h = `<h2 class="huge" style="font-size:22px">Retirer ${esc(S.rmNick)} ?</h2><p class="sub">Ses réponses seront supprimées.</p><button class="btn red" data-act="rmyes">Oui, retirer</button><button class="btn alt" data-act="nomenu">Annuler</button>`;
+  else if (m === 'forget') h = `<h2 class="huge" style="font-size:22px">Retirer de l'appareil ?</h2><p class="sub">${findS(S.code) && findS(S.code).mk ? 'Tu perdras le lien de gestion et ta clé de joueur sur cet appareil. ' : 'Tu ne pourras plus rejoindre cette session depuis cet appareil. '}La session reste active pour les autres.</p><button class="btn red" data-act="forgetyes">Oui, retirer</button><button class="btn alt" data-act="nomenu">Annuler</button>`;
+  $ovl.innerHTML = `<div class="overlay" role="dialog" aria-modal="true"><div class="sheet">${h}</div></div>`;
+}
+
+/* ---------- Actions ---------- */
+function nickVal() { const el = document.getElementById('nick'); return el ? el.value.trim() : ''; }
+async function copy(t) { try { await navigator.clipboard.writeText(t); toast('Copié'); } catch (e) { prompt('Copie ce lien :', t); } }
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+  const a = b.dataset.act, s = findS(S.code);
+  switch (a) {
+    case 'home': loadList(); go('home'); break;
+    case 'create': go('create', { cat: ALL, nick: (mem[0] && mem[0].nick) || '' }); break;
+    case 'join': go('join', {}); break;
+    case 'cat': S.nick = nickVal(); S.cat = b.dataset.v; render(); break;
+    case 'docreate': {
+      S.nick = nickVal(); if (!S.nick) { S.msg = ERR.bad_nickname; return render(); }
+      S.busy = true; S.msg = ''; render();
+      const key = genKey();
+      const r = await api('qx_create_session', { p_nickname: S.nick, p_key: key, p_category: S.cat === ALL ? null : S.cat });
+      S.busy = false;
+      if (!r.ok) { S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); return render(); }
+      upsertS({ code: r.code, nick: S.nick, key, mk: r.manage_key, cat: r.category, at: Date.now() });
+      S.code = r.code; loadHub(); break;
+    }
+    case 'dojoin': {
+      S.nick = nickVal(); S.joinCode = (document.getElementById('code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (S.joinCode.length !== 6) { S.msg = 'Le code comporte 6 caractères.'; return render(); }
+      if (!S.nick) { S.msg = ERR.bad_nickname; return render(); }
+      const ex = findS(S.joinCode); if (ex && ex.key) { S.code = S.joinCode; return loadHub(); }
+      S.busy = true; S.msg = ''; render();
+      const key = genKey();
+      const r = await api('qx_join', { p_code: S.joinCode, p_nickname: S.nick, p_key: key });
+      S.busy = false;
+      if (!r.ok) { S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); return render(); }
+      upsertS({ code: r.code, nick: r.nickname, key, cat: r.category || ALL, at: Date.now() });
+      S.code = r.code; loadHub(); break;
+    }
+    case 'open': S.code = b.dataset.code; loadHub(); break;
+    case 'retry': loadHub(); break;
+    case 'refresh': loadHub(true); toast('Actualisé'); break;
+    case 'play': play(); break;
+    case 'hub': loadHub(); break;
+    case 'ans': submit(+b.dataset.i); break;
+    case 'retrysubmit': S.menu = null; rOverlay(); submit(S.pending); break;
+    case 'share': {
+      const url = shareUrl(S.code), text = 'Rejoins ma session Quizz Express, code ' + S.code;
+      if (navigator.share) { try { await navigator.share({ title: 'Quizz Express', text, url }); } catch (er) { } } else copy(text + ' : ' + url);
+      break;
+    }
+    case 'copymk': copy(location.origin + location.pathname + '#g=' + S.code + '.' + s.mk); break;
+    case 'lock': { const r = await api('qx_set_lock', { p_code: S.code, p_manage_key: s.mk, p_locked: S.data.status !== 'locked' }); if (!r.ok) toast(errText(r.error)); loadHub(true); break; }
+    case 'closeask': showMenu('closeask'); break;
+    case 'closeyes': { S.menu = null; const r = await api('qx_close', { p_code: S.code, p_manage_key: s.mk }); if (!r.ok) toast(errText(r.error)); loadHub(); break; }
+    case 'rmask': showMenu('rm', { rmNick: b.dataset.n }); break;
+    case 'rmyes': { S.menu = null; const r = await api('qx_remove_player', { p_code: S.code, p_manage_key: s.mk, p_nickname: S.rmNick }); if (!r.ok) toast(errText(r.error)); else toast('Joueur retiré'); loadHub(true); rOverlay(); break; }
+    case 'forget': showMenu('forget'); break;
+    case 'forgetyes': removeS(S.code); S.menu = null; go('home'); break;
+    case 'toggledetail': S.showDetail = !S.showDetail; render(); break;
+    case 'nomenu': S.menu = null; rOverlay(); break;
+  }
+});
+document.addEventListener('input', e => { if (e.target.id === 'code') { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (e.target.value.length === 6) peekCode(e.target.value); } });
+async function peekCode(c) {
+  const r = await api('qx_peek', { p_code: c });
+  if (S.screen !== 'join') return;
+  S.nick = nickVal(); S.joinCode = c;
+  if (r.ok) { S.peek = r; S.msg = r.status === 'closed' ? ERR.closed : r.status === 'locked' ? ERR.locked : ''; }
+  else { S.peek = null; S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); }
+  render(); const el = document.getElementById('nick'); if (el && !el.value) el.focus();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.screen === 'hub') loadHub(true); });
+
+/* ---------- Démarrage : liens d'invitation ou de gestion ---------- */
+(function start() {
+  loadList();
+  const p = new URLSearchParams(location.search), h = location.hash;
+  const g = /^#g=([A-Z0-9]{6})\.([0-9a-f]{40})$/.exec(h);
+  if (g) {
+    const ex = findS(g[1]); upsertS(Object.assign({ code: g[1], cat: ALL, at: Date.now() }, ex || {}, { mk: g[2] }));
+    history.replaceState(null, '', location.pathname); S.code = g[1]; return loadHub();
+  }
+  const c = (p.get('s') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (c.length === 6) {
+    history.replaceState(null, '', location.pathname);
+    if (findS(c)) { S.code = c; return loadHub(); }
+    S.joinCode = c; S.nick = ''; S.screen = 'join'; render(); return peekCode(c);
+  }
+  render();
+})();
+</script>
+</body>
+</html>
