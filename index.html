@@ -79,6 +79,7 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .brow .n{flex:1;font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .brow .s{font-family:var(--f-display);font-size:17px;font-variant-numeric:tabular-nums}
 .brow .rk{font-family:var(--f-display);width:28px;text-align:center;color:var(--gold)}
+.ctag{display:inline-block;font:800 10px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:middle}
 .cmt{font-size:13px;color:var(--muted);white-space:normal;overflow:visible;text-overflow:clip}
 .x{width:40px;height:40px;border-radius:10px;border:0;background:transparent;color:var(--muted);font-size:18px;cursor:pointer}
 .qhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -234,7 +235,7 @@ function syncMusic() {
   const want = M.tapped && !muted && ['home', 'create', 'join'].includes(S.screen);
   if (want) startMusic(); else stopMusic();
 }
-/* ---- Tic-tac de la question : de plus en plus rapide, aigu et dramatique ---- */
+/* ---- Tic-tac de la question : même son, de plus en plus rapide ---- */
 let T = { bus: null };
 function stopTicks() {
   if (!T.bus) return; const b = T.bus; T.bus = null;
@@ -246,11 +247,9 @@ function scheduleTicks(remMs, totalMs) {
   const bus = c.createGain(); bus.gain.value = 1; bus.connect(c.destination); T.bus = bus;
   let L = remMs / 1000, t = c.currentTime + .05; const total = totalMs / 1000;
   while (L > .05) {
-    const prog = 1 - L / total, last3 = L <= 3;
-    const f = 650 + prog * 900, v = .035 + prog * .11;
-    note(bus, f, t, last3 ? .05 : .035, last3 ? 'square' : 'sine', v);
-    if (last3) note(bus, 70, t, .12, 'sine', .18);
-    const step = L > 6 ? 1 : L > 3 ? .5 : .25;
+    const x = L / total, prog = 1 - x;
+    note(bus, 800, t, .04, 'sine', .04 + prog * .06);
+    const step = .2 + .8 * Math.pow(x, 1.3);
     t += step; L -= step;
   }
 }
@@ -400,7 +399,7 @@ function rHub() {
   if (!d) return rLoading();
   const me = d.me, stT = { not_started: 'Pas commencé', in_progress: 'En cours', done: 'Terminé' };
   const stC = { not_started: '', in_progress: 'gold', done: 'good' };
-  const players = d.players.map(p => `<div class="brow ${p.is_me ? 'me' : ''}"><span class="em">${esc(p.avatar || '🦊')}</span><span class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}</span>
+  const players = d.players.map(p => `<div class="brow ${p.is_me ? 'me' : ''}"><span class="em">${esc(p.avatar || '🦊')}</span><span class="n">${esc(p.nickname)}${p.is_me ? ' (toi)' : ''}${p.is_creator ? ' <span class="ctag">créateur</span>' : ''}</span>
     <span class="pill ${stC[p.status]}">${stT[p.status]}</span>
     ${s.mk && !p.is_creator ? `<button class="x" data-act="rmask" data-n="${esc(p.nickname)}" aria-label="Retirer ${esc(p.nickname)}">✕</button>` : ''}</div>`).join('');
   let mine = '';
@@ -490,8 +489,8 @@ function rResults() {
   const order = top.length >= 3 ? [1, 0, 2] : top.length === 2 ? [1, 0] : [0];
   const pod = top.length ? order.map(k => { const p = top[k]; return `<div class="pod p${p.rank > 3 ? 3 : Math.min(3, k + 1)}"><span style="font-size:30px">${esc(p.avatar || '🦊')}</span><span class="nm">${esc(p.nickname)}</span><span class="sc">${fmt(p.score)}</span><div class="blk">${p.rank}</div></div>`; }).join('') : '';
   const ms = ms => ms == null ? '' : ' · ' + (ms / 1000).toFixed(1).replace('.', ',') + ' s sur les bonnes';
-  const rows = R.map(p => `<div class="brow ${p.is_me ? 'me' : ''} ${p.played ? '' : 'out'}"><span class="rk">${p.rank == null ? '–' : p.rank}</span><span class="em">${esc(p.avatar || '🦊')}</span>
-    <div class="n">${esc(p.nickname)}${p.is_creator ? ' 👑' : ''}${p.is_me ? ' (toi)' : ''}<div class="cmt">${p.played ? p.correct + ' bonnes réponses' + ms(p.time_correct_ms) : "n'a pas joué"}</div></div>
+  const rows = R.map(p => `<div class="brow ${p.is_me ? 'me' : ''} ${p.played ? '' : 'out'}"><span class="rk">${p.rank == null ? '–' : (['🥇', '🥈', '🥉'][p.rank - 1] || p.rank)}</span><span class="em">${esc(p.avatar || '🦊')}</span>
+    <div class="n">${esc(p.nickname)}${p.is_me ? ' (toi)' : ''}<div class="cmt">${p.played ? p.correct + ' bonnes réponses' + ms(p.time_correct_ms) : "n'a pas joué"}</div></div>
     <span class="s">${p.played ? fmt(p.score) : ''}</span></div>`).join('');
   $app.innerHTML = `<section class="screen"><h1 class="title">Résul<em>tats</em></h1>
     <div class="row wrap"><span class="pill">Code ${esc(r.code)}</span><span class="pill" style="border:2px solid ${catColor(r.category)}">${esc(r.category)}</span></div>
