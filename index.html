@@ -182,6 +182,78 @@ const sfx = {
   bad: () => tone(170, .4, 'sawtooth', .16),
   win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, .25, 'triangle', .18, i * .14))
 };
+
+/* ---- Musique d'ambiance (synthétisée, boucle de 8 mesures) ---- */
+const M = { bus: null, timer: 0, next: 0, step: 0, on: false, noise: null, tapped: false };
+const BASS = [48, 45, 41, 43, 48, 45, 38, 43];
+const MEL = [[64,67,72,67,64,67,72,76],[69,72,76,72,69,76,72,69],[65,69,72,69,72,69,65,69],[67,71,74,71,74,71,67,71],
+  [64,67,72,76,72,67,64,67],[69,72,76,81,76,72,69,72],[65,69,74,77,74,69,65,69],[67,71,74,71,67,74,71,67]];
+const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+const EIGHTH = 60 / 132 / 2;
+function note(dest, f, t, d, type, v) {
+  const c = audioCtx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + d + .05);
+}
+function hat(dest, t) {
+  const c = audioCtx; if (!M.noise) { const b = c.createBuffer(1, c.sampleRate * .1, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; M.noise = b; }
+  const src = c.createBufferSource(), hp = c.createBiquadFilter(), g = c.createGain(); src.buffer = M.noise; hp.type = 'highpass'; hp.frequency.value = 7000;
+  g.gain.setValueAtTime(.05, t); g.gain.exponentialRampToValueAtTime(.0001, t + .04);
+  src.connect(hp); hp.connect(g); g.connect(dest); src.start(t); src.stop(t + .06);
+}
+function kick(dest, t) {
+  const c = audioCtx, o = c.createOscillator(), g = c.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(48, t + .12);
+  g.gain.setValueAtTime(.16, t); g.gain.exponentialRampToValueAtTime(.0001, t + .16);
+  o.connect(g); g.connect(dest); o.start(t); o.stop(t + .2);
+}
+function musicStep(i, t) {
+  const bar = Math.floor(i / 8) % 8, k = i % 8, dest = M.bus;
+  note(dest, mf(MEL[bar][k]), t, EIGHTH * .9, 'square', .035);
+  if (k % 2 === 0) note(dest, mf(BASS[bar] + (k === 4 ? 7 : 0)), t, EIGHTH * 1.8, 'triangle', .13);
+  if (k === 0 || k === 4) kick(dest, t);
+  if (k % 2 === 1) hat(dest, t);
+}
+function startMusic() {
+  if (M.on || muted) return; const c = ac(); if (!c) return;
+  M.on = true; M.step = 0; M.next = c.currentTime + .08;
+  M.bus = c.createGain(); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+  M.bus.gain.setValueAtTime(.0001, c.currentTime); M.bus.gain.linearRampToValueAtTime(.45, c.currentTime + .8);
+  M.bus.connect(lp); lp.connect(c.destination); M.lp = lp;
+  M.timer = setInterval(() => {
+    while (M.next < c.currentTime + .4) { musicStep(M.step, M.next); M.next += EIGHTH; M.step = (M.step + 1) % 64; }
+  }, 80);
+}
+function stopMusic() {
+  if (!M.on) return; M.on = false; clearInterval(M.timer);
+  const c = audioCtx, bus = M.bus, lp = M.lp;
+  try { bus.gain.cancelScheduledValues(c.currentTime); bus.gain.setTargetAtTime(0, c.currentTime, .08); } catch (e) { }
+  setTimeout(() => { try { bus.disconnect(); lp.disconnect(); } catch (e) { } }, 700);
+}
+function syncMusic() {
+  const want = M.tapped && !muted && ['home', 'create', 'join'].includes(S.screen);
+  if (want) startMusic(); else stopMusic();
+}
+/* ---- Tic-tac de la question : de plus en plus rapide, aigu et dramatique ---- */
+let T = { bus: null };
+function stopTicks() {
+  if (!T.bus) return; const b = T.bus; T.bus = null;
+  try { b.gain.cancelScheduledValues(audioCtx.currentTime); b.gain.setTargetAtTime(0, audioCtx.currentTime, .01); } catch (e) { }
+  setTimeout(() => { try { b.disconnect(); } catch (e) { } }, 300);
+}
+function scheduleTicks(remMs, totalMs) {
+  stopTicks(); if (muted) return; const c = ac(); if (!c) return;
+  const bus = c.createGain(); bus.gain.value = 1; bus.connect(c.destination); T.bus = bus;
+  let L = remMs / 1000, t = c.currentTime + .05; const total = totalMs / 1000;
+  while (L > .05) {
+    const prog = 1 - L / total, last3 = L <= 3;
+    const f = 650 + prog * 900, v = .035 + prog * .11;
+    note(bus, f, t, last3 ? .05 : .035, last3 ? 'square' : 'sine', v);
+    if (last3) note(bus, 70, t, .12, 'sine', .18);
+    const step = L > 6 ? 1 : L > 3 ? .5 : .25;
+    t += step; L -= step;
+  }
+}
 function paintMute() { const b = document.getElementById('mutebtn'); if (b) { b.textContent = muted ? '🔇' : '🔊'; b.setAttribute('aria-label', muted ? 'Son coupé' : 'Son activé'); } }
 const catColor = id => (CATS.find(c => c.id === id) || { color: '#ffc93c' }).color;
 const TOTAL = 10;
@@ -250,12 +322,12 @@ const fmtS = n => (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n).toLocaleStrin
 const fdate = iso => iso ? new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '';
 const shareUrl = code => location.origin + location.pathname + '?s=' + code;
 function toast(t) { const el = document.getElementById('toast'); el.innerHTML = '<div class="toast">' + esc(t) + '</div>'; setTimeout(() => el.innerHTML = '', 2200); }
-function stopTimers() { cancelAnimationFrame(qt.raf); qt.timeouts.forEach(clearTimeout); qt.timeouts = []; clearInterval(poll); poll = 0; }
+function stopTimers() { stopTicks(); cancelAnimationFrame(qt.raf); qt.timeouts.forEach(clearTimeout); qt.timeouts = []; clearInterval(poll); poll = 0; }
 function go(screen, extra) { stopTimers(); S = Object.assign({ screen, code: S.code, data: null, menu: null, busy: false, msg: '' }, extra || {}); render(); }
 
 /* ---------- Ecrans ---------- */
 function render() {
-  paintMute();
+  paintMute(); syncMusic();
   document.getElementById('homebtn').hidden = S.screen === 'home' || S.screen === 'question';
   ({ home: rHome, create: rCreate, join: rJoin, hub: rHub, loading: rLoading, question: rQuestion, feedback: rFeedback, results: rResults, netfail: rNetFail })[S.screen]();
   rOverlay();
@@ -441,14 +513,12 @@ async function play() {
   if (!q.ok) { toast(errText(q.error)); return loadHub(); }
   if (q.done) return loadHub();
   S.q = q; S.t0 = performance.now(); S.locked = false; S.picked = -1; S.lastTick = -1;
-  S.screen = 'question'; render(); loop();
+  S.screen = 'question'; render(); scheduleTicks(S.q.remaining_ms, S.q.timer_ms); loop();
 }
 function remaining() { return Math.max(0, S.q.remaining_ms - (performance.now() - S.t0)); }
 function loop() {
   const T = S.q.timer_ms, left = remaining();
   const n = document.getElementById('tnum'), b = document.getElementById('tfill'), bar = document.getElementById('tbar');
-  const sec = Math.ceil(left / 1000);
-  if (left <= 3000 && left > 0 && sec !== S.lastTick) { S.lastTick = sec; sfx.tick(); }
   if (n) n.textContent = Math.ceil(left / 1000);
   if (b) b.style.transform = 'scaleX(' + (left / T) + ')';
   if (bar) bar.classList.toggle('low', left <= 3000);
@@ -466,7 +536,7 @@ function rQuestion() {
     <div class="answers ${vf ? 'vf' : ''}" id="answers">${btns}</div></section>`;
 }
 async function submit(pos) {
-  if (S.locked) return; S.locked = true; cancelAnimationFrame(qt.raf);
+  if (S.locked) return; S.locked = true; cancelAnimationFrame(qt.raf); stopTicks();
   const q = S.q, timeout = pos == null;
   const claimed = timeout ? q.timer_ms + 1 : Math.round(q.timer_ms - q.remaining_ms + (performance.now() - S.t0));
   S.picked = pos;
@@ -510,11 +580,11 @@ function rOverlay() {
 function nickVal() { const el = document.getElementById('nick'); return el ? el.value.trim() : ''; }
 async function copy(t) { try { await navigator.clipboard.writeText(t); toast('Copié'); } catch (e) { prompt('Copie ce lien :', t); } }
 document.addEventListener('click', async e => {
-  ac();
+  ac(); if (!M.tapped) { M.tapped = true; setTimeout(syncMusic, 0); }
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
   const a = b.dataset.act, s = findS(S.code);
   switch (a) {
-    case 'mute': muted = !muted; try { localStorage.setItem('qx_muted', muted ? '1' : '0'); } catch (er) { } paintMute(); if (!muted) sfx.good(); break;
+    case 'mute': muted = !muted; try { localStorage.setItem('qx_muted', muted ? '1' : '0'); } catch (er) { } paintMute(); if (muted) stopTicks(); else sfx.good(); syncMusic(); break;
     case 'avatar': S.nick = nickVal(); S.avatar = nextAvatar(S.avatar); saveAvatar(S.avatar); if (S.screen === 'join') S.joinCode = (document.getElementById('code').value || '').toUpperCase(); render(); break;
     case 'home': loadList(); go('home'); break;
     case 'create': go('create', { cat: ALL, nick: (mem[0] && mem[0].nick) || '', avatar: lastAvatar() }); break;
@@ -576,7 +646,12 @@ async function peekCode(c) {
   else { S.peek = null; S.msg = r.error === 'network' ? 'Connexion impossible.' : errText(r.error); }
   render(); const el = document.getElementById('nick'); if (el && !el.value) el.focus();
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && S.screen === 'hub') loadHub(true); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { stopTicks(); if (audioCtx && audioCtx.state === 'running') audioCtx.suspend(); return; }
+  ac();
+  if (S.screen === 'question' && !S.locked) scheduleTicks(remaining(), S.q.timer_ms);
+  if (S.screen === 'hub') loadHub(true);
+});
 
 /* ---------- Démarrage : liens d'invitation ou de gestion ---------- */
 (function start() {
